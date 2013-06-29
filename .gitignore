@@ -3,3 +3,6 @@
 target
 *.log
 *.jar
+
+.DS_Store
+

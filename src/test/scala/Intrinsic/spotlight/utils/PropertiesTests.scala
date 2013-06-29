@@ -16,9 +16,14 @@
 * authors and how to contribute to the project:
 * http://spotlight.dbpedia.org
 */
+
+package Intrinsic.spotlight.utils
+
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
 import com.typesafe.config.ConfigFactory
-import org.junit.Assert._
-import org.junit.{Before, Test}
 
 /**
  * Tests if the properties file has the needed configuration
@@ -41,7 +46,18 @@ class PropertiesTests {
 
   @Test
   def checkPossibleValues {
-    assertTrue("object".equals(config.getString("execution.extraction")) || "property".equals(config.getString("execution.extraction")))
-    assertTrue("TSV".equals(config.getString("execution.outputFormat")) || "JSON".equals(config.getString("execution.outputFormat")))
+    assertTrue(
+      "object".equals(
+         config.getString("execution.extraction")) || 
+         "property".equals(config.getString("execution.extraction")
+       )   
+    )
+         
+    assertTrue(
+      "TSV".equals(
+        config.getString("execution.outputFormat")) || 
+        "JSON".equals(config.getString("execution.outputFormat")
+        )
+      )
   }
 }

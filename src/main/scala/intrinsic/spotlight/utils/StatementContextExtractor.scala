@@ -17,7 +17,13 @@
 * http://spotlight.dbpedia.org
 */
 
-import com.hp.hpl.jena.rdf.model._
+package intrinsic.spotlight.utils
+
+import com.hp.hpl.jena.rdf.model.AnonId
+import com.hp.hpl.jena.rdf.model.Literal
+import com.hp.hpl.jena.rdf.model.RDFVisitor
+import com.hp.hpl.jena.rdf.model.Resource
+import com.hp.hpl.jena.rdf.model.Statement
 
 /**
  * Class that extracts different context definitions from a Jena Statement.
@@ -42,14 +48,19 @@ class PropertyExtractor extends StatementContextExtractor {
   }
 }
 
-//Visitor used to get the label according to the object type
+/**
+ * Visitor used to get the label according to the object type
+ */
 class StatementVisitor extends RDFVisitor {
+  
   def visitBlank(node: Resource, arg1: AnonId): AnyRef = {
     ""
   }
+  
   def visitLiteral(literal: Literal): AnyRef = {
     literal.getLexicalForm
   }
+  
   def visitURI(resource: Resource, uri: String): AnyRef = {
     val result = DataConn.executeQuery(uri)
     if (result == null) resource.getLocalName else result
