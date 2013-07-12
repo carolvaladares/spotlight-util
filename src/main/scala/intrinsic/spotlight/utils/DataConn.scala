@@ -21,9 +21,7 @@ package intrinsic.spotlight.utils
 
 import java.io.IOException
 import java.io.InputStream
-
 import org.apache.jena.iri.impl.IRIImplException
-
 import com.hp.hpl.jena.query.Dataset
 import com.hp.hpl.jena.query.ParameterizedSparqlString
 import com.hp.hpl.jena.query.Query
@@ -35,6 +33,9 @@ import com.hp.hpl.jena.rdf.model.Model
 import com.hp.hpl.jena.rdf.model.ModelFactory
 import com.hp.hpl.jena.tdb.TDBFactory
 import com.hp.hpl.jena.util.FileManager
+import com.hp.hpl.jena.rdf.model.RDFReader
+import org.apache.jena.riot.RiotException
+import com.hp.hpl.jena.tdb.base.block.BlockException
 
 
 /**
@@ -48,16 +49,6 @@ object DataConn {
   /* TDB, in which the DefaultModel holds Labels model and 
    * NamedModel holds either properties or types models*/
   var dataSet: Dataset = null
-  
-  /* Extraction Model: Types or Properties */
-  var model: Model  = null
-  
-  /**
-   * TODO: Carol: Model is a temporary solution as I have been facing an error while dealing with named model from TDB.
-   * Ideally, model should be stored in the TDB as a named Model (addNAmedModel) 
-   * Error: Quad cannot be null (Think it's a Statement issue.)
-   * Refer to: http://www.developpez.net/forums/d1237360/webmasters-developpement-web/web-semantique/tdb-probleme-lecture-graphe-quad-object-cannot-be-null-resolu/
-   */
 
   /**
    * Creates a Jena dataset populating both Labels and (Properties/Types) Models
@@ -80,10 +71,8 @@ object DataConn {
   def createTDBFilesystem(outputData: String, is: InputStream, format: String) = {
     /* Creates tdb */
     dataSet = TDBFactory.createDataset(outputData)
-    /* Creates default Model for labels dataset */
-    val tdb: Model = dataSet.getDefaultModel
-    /* Populates model*/
-    readIntoModel(tdb, is, format)
+    /* Creates default Model and populate it for labels dataset */
+    val tdb: Model = readModel(is, format) //dataSet.getDefaultModel
     tdb.close
   }
 
@@ -92,13 +81,29 @@ object DataConn {
    * It might be a properties or a type dataset.
    */
   def addModelToTDB(modelName: String, is: InputStream, format: String) = {
-    /* Creates a Model for Properties or Types dataset */
-    model = ModelFactory.createDefaultModel//TDBFactory.createModel()
-    /* Populates model*/
-    readIntoModel(model, is, format)
+    /* Creates a Model for Properties or Types dataset and populate it */
+    val model2: Model = readModel(is, format)//ModelFactory.createDefaultModel//TDBFactory.createModel()
     /* Adding model into dataset*/
-    //dataSet.addNamedModel(modelName, m) 
-    //Carol:ERROR:http://www.developpez.net/forums/d1237360/webmasters-developpement-web/web-semantique/tdb-probleme-lecture-graphe-quad-object-cannot-be-null-resolu/
+    dataSet.addNamedModel("idd", model2) 
+  }
+  
+  
+  def readModel (is: InputStream, format: String) : Model = {
+    val model: Model = ModelFactory.createDefaultModel
+    var reader: RDFReader = model.getReader( format)
+    reader.setProperty("allowBadURIs", "true");
+	reader.setProperty("relativeURIs", "");
+	reader.setProperty("tab", "0");
+	reader.setProperty("WARN_REDEFINITION_OF_ID", "EM_IGNORE");
+	try{
+	   reader.read(model, is, null)
+	} catch {
+	  case (e: RiotException) => {
+	    println("Error 05: java.io.IOException: unexpected end of stream");
+	    println(e.getStackTrace());
+	  }
+	}
+    model
   }
   
   /**
@@ -109,6 +114,7 @@ object DataConn {
     if (is != null) {
       model.read(is, null, format)
       is.close
+      //model.close
     } else {
       throw new IOException("Cannot open input file %s") //.format(input))
     }
@@ -174,6 +180,5 @@ object DataConn {
       }
     }
    result
-    
   }
 }

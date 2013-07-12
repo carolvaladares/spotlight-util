@@ -37,15 +37,25 @@ class JenaStatementSource(model: Model) extends Traversable[Statement] {
    * This method takes as input a function that maps from a Statement to anything
    */
    override def foreach[U](extract : Statement => U) {
-    val inputSubjects: ResIterator = model.listSubjects
-    while (inputSubjects.hasNext) {
-      //Get the subject
-      val subject: Resource = inputSubjects.next
-      val properties: StmtIterator = subject.listProperties
-      while (properties.hasNext) {
-        extract(properties.next)
-      }
-    }
+     
+     try{
+        val inputSubjects: ResIterator = model.listSubjects
+	    while (inputSubjects.hasNext) {
+	      //Get the subject
+	      val subject: Resource = inputSubjects.next
+	      val properties: StmtIterator = subject.listProperties
+	      while (properties.hasNext) {
+	        extract(properties.next)
+	      }
+	    }
+     } catch  {
+		case e: UnsupportedOperationException => {
+        println("Error 01: UnsupportedOperationException " );
+        println(extract.getClass());
+        println(e.toString())
+        //throw new RuntimeException(e)
+     }
+	}  
   }
 
 }

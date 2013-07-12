@@ -83,7 +83,7 @@ object RDFContextExtractor extends App {
     		modelFormat,
     		extraction, 
     		outputFormat,
-    		outputFile)
+    		outputFile, "j")
     		
     outputFile
   }
@@ -97,14 +97,18 @@ object RDFContextExtractor extends App {
 		  	    modelFormat:String, 
 		  	    extraction: String, 
 		  	    outformat: String, 
-		  	    outputFile: String) {
+		  	    outputFile: String, 
+		  	    namedModel: String) {
     
     if (loadtdb) {
+      println("Loading " + tdbFile + " into the Main TDB: ");
+      
       /** Convert TDB input file into InputStream*/
       val tdbModel: InputStream = if (extensor(tdbFile).equals(Some("bz2"))) ExtractData.convert(tdbFile) 
     		  					    else ExtractData.toInputStream(tdbFile)
       /** Creates and populates TDB */
       DataConn.createTDBFilesystem(tdbLocation, tdbModel, tdbFormat)
+      println("Main model of TDB loaded.");
     }
    
     /** converts Model input file into InputStream**/
@@ -113,19 +117,25 @@ object RDFContextExtractor extends App {
     		
     /** Get TDB */
     DataConn.getTDBFilesystem(tdbLocation)
-    /** Add Model into TDB **/
-    DataConn.addModelToTDB("properties", input, modelFormat)
     
+     println("Loading " + modelFile + " into the Named model TDB " );
+    /** Add Model into TDB **/
+    DataConn.addModelToTDB(namedModel, input, modelFormat)
+    
+    println("Extracting dataset...");
     /**Execute the extraction itself */
     RDFContextExtractor.labelExtraction(
       extraction,
       outformat,
       "properties",
       outputFile)
+     
+    println("Done");
+     
   }
   
   /**
-   * (CV: No longer used) Reads in files into a Jena Model.
+   * Reads in files into a Jena Model.
    * Performs context extraction, formatting and outputs context into a file.
    * Context extraction can focus on property labels, object labels or object type labels.
    */
@@ -141,7 +151,7 @@ object RDFContextExtractor extends App {
     val extractor = if (partToBeExtracted.equals("object")) new ObjectExtractor else new PropertyExtractor
     
     /** applying over input*/
-    val model: Model = DataConn.model//dataSet.getNamedModel(namedModel)
+    val model: Model = DataConn.dataSet.getNamedModel(namedModel)
    
     var source: JenaStatementSource =  new JenaStatementSource( model)
     

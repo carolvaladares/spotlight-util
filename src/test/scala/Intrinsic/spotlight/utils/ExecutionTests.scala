@@ -40,15 +40,18 @@ import intrinsic.spotlight.utils.util.ExtractData
 class ExecutionTests extends Assertions {
 
   /** TDB Input file*/
-  val labelsNT: String = "http://dl.dropboxusercontent.com/u/10940054/pt/3.8_sl_en_sl_labels_en.nt.bz2"  //Smaller dataset in EN
-		  				 //"http://downloads.dbpedia.org/3.8/pt/labels_pt.nt.bz2"						//Bigger dataset in Pt
+  val labelsNT: String = //"http://dl.dropboxusercontent.com/u/10940054/pt/3.8_sl_en_sl_labels_en.nt.bz2"  //Smaller dataset in EN
+		  				 "http://downloads.dbpedia.org/3.8/pt/labels_pt.nt.bz2"						//Bigger dataset in Pt
     
-  val typesNT: String = "http://dl.dropboxusercontent.com/u/10940054/pt/3.8_sl_en_sl_instance_types_en.nt.bz2"  //Smaller dataset in EN
-    					//"http://downloads.dbpedia.org/3.8/pt/instance_types_pt.nt.bz2"						//Bigger dataset in Pt
+  val typesNT: String = //"http://dl.dropboxusercontent.com/u/10940054/pt/3.8_sl_en_sl_instance_types_en.nt.bz2"  //Smaller dataset in EN
+    					"http://downloads.dbpedia.org/3.8/pt/instance_types_pt.nt.bz2"						//Bigger dataset in Pt
     
-  val propertiesNT: String = "http://dl.dropboxusercontent.com/u/10940054/pt/3.8_sl_en_sl_mappingbased_properties_en.nt.bz2" //Smaller dataset in EN
-    	 					 //"https://dl.dropboxusercontent.com/u/10940054/mappingbased_properties_pt.nt.bz2" 			 //Bigger dataset in Pt
+  val propertiesNT: String = ///"http://dl.dropboxusercontent.com/u/10940054/pt/3.8_sl_en_sl_mappingbased_properties_en.nt.bz2" //Smaller dataset in EN
+    	 					 "http://downloads.dbpedia.org/3.8/pt/mappingbased_properties_pt.nt.bz2" 			 //Bigger dataset in Pt
   
+  val linksNT: String = //"http://downloads.dbpedia.org/3.8/en/page_links_en.nt.bz2"
+    "http://downloads.dbpedia.org/3.8/pt/page_links_en_uris_pt.nt.bz2"
+    
   /** TDB Input file*/
   val labelsOWL: String = "http://dl.dropboxusercontent.com/u/10940054/pt/dbpedia_3.8.owl.bz2"
     
@@ -69,21 +72,21 @@ class ExecutionTests extends Assertions {
   def TDBCreation {
     /** Test the conversion of input file (*.bz2) into InputStrem **/
     val labelsInputNT: InputStream = ExtractData.convert(labelsNT)
-    val labelsInputOWL: InputStream = ExtractData.convert(labelsOWL)
+    //val labelsInputOWL: InputStream = ExtractData.convert(labelsOWL)
     
     assert(labelsInputNT != null)
-    assert(labelsInputOWL != null)
+   // assert(labelsInputOWL != null)
    
     /** Test NT and OWL databases creation **/
     DataConn.createTDBFilesystem(datasetNL, labelsInputNT, formatNamed)
-    DataConn.createTDBFilesystem(datasetOWL, labelsInputOWL, formatDefault)
+   // DataConn.createTDBFilesystem(datasetOWL, labelsInputOWL, formatDefault)
     
     /** Retrieves the database just created. **/
     DataConn.getTDBFilesystem(datasetNL)
-    assert("AlbaniaHistory".equals(DataConn.executeQuery("http://dbpedia.org/resource/AlbaniaHistory")))
+    //assert("AlbaniaHistory".equals(DataConn.executeQuery("http://dbpedia.org/resource/AlbaniaHistory")))
     
-    DataConn.getTDBFilesystem(datasetOWL)
-    assert("anatomical structure".equals(DataConn.executeQuery("http://dbpedia.org/ontology/AnatomicalStructure")))
+   // DataConn.getTDBFilesystem(datasetOWL)
+   // assert("anatomical structure".equals(DataConn.executeQuery("http://dbpedia.org/ontology/AnatomicalStructure")))
   }
   
   @Before
@@ -98,13 +101,31 @@ class ExecutionTests extends Assertions {
   
   @Test
   def execution {
-    extracTromRDF
+    //extracTromRDF
+    extractObjectsFromPageLinksAndNTDatabase
     //extractObjectsFromMapBasPropertiesAndNtDatabase
     //extractObjectsFromTypesAndNtDatabase
     //extractObjectsFromTypesAndOwlDatabase
     //extractPropertiesFromMapBasPropertiesAndOwlDatabase
   }
  
+  def extractObjectsFromPageLinksAndNTDatabase {
+
+    val outputFile: String = "files/outputs/objectsFromPageLinksAndNtDatabase.tsv"
+   
+    RDFContextExtractor.extract(
+      false, 
+      labelsNT, 
+      datasetNL, 
+      formatNamed, 
+      linksNT, 
+      formatNamed, 
+      extractionObject, 
+      outputFormatTSV, 
+      outputFile, 
+      "linksNT")
+  }
+  
   def asserts(outputFile: String, assertPattern: String) {
     val source = Source.fromFile(outputFile)
     val lines = source.mkString
@@ -118,17 +139,19 @@ class ExecutionTests extends Assertions {
     val outputFile: String = "files/outputs/objectsFromMapBasPropertiesAndNtDatabase.tsv"
    
     RDFContextExtractor.extract(
-      false, 
+      true, 
       labelsNT, 
       datasetNL, 
-      formatDefault, 
+      formatNamed, 
       propertiesNT, 
       formatNamed, 
       extractionObject, 
       outputFormatTSV, 
-      outputFile)
+      outputFile,
+     "propertiesNT")
       
-      asserts(outputFile, "")
+    //  asserts(outputFile, "")
+      
 
     
     /*"""Aristotle	Metaphysics Theatre Biology  Galileo_Galilei List of writers influenced by Aristotle Alexander_the_Great Albertus_Magnus Christian_philosophy Socrates , Aristot√©lƒìs Science Music Ethics Parmenides Politics Democritus Zoology -0384 Duns_Scotus Rhetoric Peripatetic_school Western_philosophy Thomas_Aquinas Physics Government Avicenna Reason Logic Nicolaus_Copernicus Western_philosophy Aristotelianism Syllogism Heraclitus Ptolemy -0322 Poetry Jewish_philosophy Maimonides Plato Ancient_philosophy Islamic_philosophy Averroes
@@ -148,12 +171,13 @@ class ExecutionTests extends Assertions {
       false, 
       labelsNT, 
       datasetNL, 
-      formatDefault, 
+      formatNamed, 
       typesNT, 
       formatNamed, 
       extractionObject, 
       outputFormatTSV, 
-      outputFile)
+      outputFile,
+      "typesNT")
       
      asserts(outputFile, "")
     
@@ -189,7 +213,8 @@ class ExecutionTests extends Assertions {
       formatNamed, 
       extractionObject, 
       outputFormatTSV, 
-      outputFile)
+      outputFile,
+      "typesNT_owl")
       
      asserts(outputFile, "")
     
@@ -225,7 +250,8 @@ class ExecutionTests extends Assertions {
       formatNamed, 
       extractionProperty, 
       outputFormatJSON, 
-      outputFile)
+      outputFile,
+      "propertiesNT_owl")
       
      asserts(outputFile, "")
     
