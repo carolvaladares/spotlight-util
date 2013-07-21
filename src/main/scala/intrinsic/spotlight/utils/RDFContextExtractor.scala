@@ -83,7 +83,7 @@ object RDFContextExtractor extends App {
     		modelFormat,
     		extraction, 
     		outputFormat,
-    		outputFile, "j")
+    		outputFile, outputFile)
     		
     outputFile
   }
@@ -101,14 +101,12 @@ object RDFContextExtractor extends App {
 		  	    namedModel: String) {
     
     if (loadtdb) {
-      println("Loading " + tdbFile + " into the Main TDB: ");
       
       /** Convert TDB input file into InputStream*/
       val tdbModel: InputStream = if (extensor(tdbFile).equals(Some("bz2"))) ExtractData.convert(tdbFile) 
     		  					    else ExtractData.toInputStream(tdbFile)
       /** Creates and populates TDB */
       DataConn.createTDBFilesystem(tdbLocation, tdbModel, tdbFormat)
-      println("Main model of TDB loaded.");
     }
    
     /** converts Model input file into InputStream**/
@@ -118,19 +116,16 @@ object RDFContextExtractor extends App {
     /** Get TDB */
     DataConn.getTDBFilesystem(tdbLocation)
     
-     println("Loading " + modelFile + " into the Named model TDB " );
     /** Add Model into TDB **/
     DataConn.addModelToTDB(namedModel, input, modelFormat)
     
-    println("Extracting dataset...");
     /**Execute the extraction itself */
     RDFContextExtractor.labelExtraction(
       extraction,
       outformat,
-      "properties",
+      namedModel,
       outputFile)
      
-    println("Done");
      
   }
   
@@ -152,7 +147,7 @@ object RDFContextExtractor extends App {
     
     /** applying over input*/
     val model: Model = DataConn.dataSet.getNamedModel(namedModel)
-   
+
     var source: JenaStatementSource =  new JenaStatementSource( model)
     
     source.groupBy(e => e.getSubject).flatMap {

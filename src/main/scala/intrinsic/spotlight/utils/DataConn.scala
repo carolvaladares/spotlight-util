@@ -84,7 +84,7 @@ object DataConn {
     /* Creates a Model for Properties or Types dataset and populate it */
     val model2: Model = readModel(is, format)//ModelFactory.createDefaultModel//TDBFactory.createModel()
     /* Adding model into dataset*/
-    dataSet.addNamedModel("idd", model2) 
+    dataSet.addNamedModel(modelName, model2) 
   }
   
   
