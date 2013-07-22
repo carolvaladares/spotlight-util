@@ -93,22 +93,67 @@ class ExecutionTests extends Assertions {
   def createDatabases {
     //TDBCreation
   }
-
-  def extracTromRDF {
-    val file: String = RDFContextExtractor.extractFromConfig
-    asserts(file, "")
-  }
   
   @Test
   def execution {
-    //extracTromRDF
-    extractObjectsFromPageLinksAndNTDatabase
+    extract
+    //extractObjectsFromPageLinksAndNTDatabase
     //extractObjectsFromMapBasPropertiesAndNtDatabase
     //extractObjectsFromTypesAndNtDatabase
     //extractObjectsFromTypesAndOwlDatabase
     //extractPropertiesFromMapBasPropertiesAndOwlDatabase
   }
  
+  def extract {
+
+    /** Loads the labels dataset if it is the first iteration**/
+    var boo:Boolean = true
+    
+    /** (0) output , (1) input file , (2) name**/
+    val files: Array[Array[String]] = Array(
+      Array("files/outputs/page_links.pt.nt.obj.tsv", 
+        "http://downloads.dbpedia.org/3.8/pt/page_links_pt.nt.bz2", 
+        "page_links_pt_nt"),
+      Array("files/outputs/page_links_unredirected.pt.nt.obj.tsv", 
+        "http://downloads.dbpedia.org/3.8/pt/page_links_unredirected_pt.nt.bz2", 
+        "page_links_unredirected_pt_nt"),
+        
+      Array("files/outputs/long_abstracts.pt.nt.obj.tsv", 
+        "http://downloads.dbpedia.org/3.8/pt/long_abstracts_pt.nt.bz2", 
+        "long_abstracts_pt_nt"),
+     Array("files/outputs/interlanguage_links.pt.nt.obj.tsv", 
+        "http://downloads.dbpedia.org/3.8/pt/interlanguage_links_pt.nt.bz2", 
+        "interlanguage_links_pt_nt"),
+        
+      Array("files/outputs/instance_types.pt.nt.obj.tsv", 
+        "http://downloads.dbpedia.org/3.8/pt/instance_types_pt.nt.bz2", 
+        "instance_types_pt_nt") ,   
+      Array("files/outputs/mappingbased_properties.pt.nt.obj.tsv", 
+        "http://downloads.dbpedia.org/3.8/pt/mappingbased_properties_pt.nt.bz2", 
+        "mappingbased_properties_pt_nt")
+    )
+
+    for(file: Array[String] <- files){
+      RDFContextExtractor.extract2(
+      boo, 
+      labelsNT, 
+      datasetNL, 
+      formatNamed, 
+      file(1), 
+      formatNamed, 
+      extractionObject, 
+      outputFormatTSV, 
+      file(0), 
+      //"/Users/carol/Documents/Intrinsic/Repositories/spotlight-util/files/outputs/tdbs/" + file(2),
+      "/root/carol/spotlight-util/files/outputs/tdbs/" + file(2),
+	  //"/Users/carol/Documents/Intrinsic/Dataset"
+      "/root/carol/datasets/"
+	  )
+	  boo = false
+    }
+   
+  }
+  
   def extractObjectsFromPageLinksAndNTDatabase {
 
     val outputFile: String = "files/outputs/objectsFromPageLinksAndNtDatabase.tsv"

@@ -21,7 +21,10 @@ package intrinsic.spotlight.utils
 
 import java.io.IOException
 import java.io.InputStream
+
 import org.apache.jena.iri.impl.IRIImplException
+import org.apache.jena.riot.RiotException
+
 import com.hp.hpl.jena.query.Dataset
 import com.hp.hpl.jena.query.ParameterizedSparqlString
 import com.hp.hpl.jena.query.Query
@@ -31,11 +34,8 @@ import com.hp.hpl.jena.query.QueryFactory
 import com.hp.hpl.jena.query.ResultSet
 import com.hp.hpl.jena.rdf.model.Model
 import com.hp.hpl.jena.rdf.model.ModelFactory
-import com.hp.hpl.jena.tdb.TDBFactory
-import com.hp.hpl.jena.util.FileManager
 import com.hp.hpl.jena.rdf.model.RDFReader
-import org.apache.jena.riot.RiotException
-import com.hp.hpl.jena.tdb.base.block.BlockException
+import com.hp.hpl.jena.tdb.TDBFactory
 
 
 /**
@@ -49,7 +49,7 @@ object DataConn {
   /* TDB, in which the DefaultModel holds Labels model and 
    * NamedModel holds either properties or types models*/
   var dataSet: Dataset = null
-
+  
   /**
    * Creates a Jena dataset populating both Labels and (Properties/Types) Models
    */
@@ -140,7 +140,11 @@ object DataConn {
   def getTDBFilesystem(outputData: String) = {
     dataSet = TDBFactory.createDataset(outputData)
   }
-
+ 
+  def getTDBFilesystemDataset(outputData: String) : Dataset = {
+    TDBFactory.createDataset(outputData)
+  }
+   
   /** 
    *  Query data from Labels Model 
    */

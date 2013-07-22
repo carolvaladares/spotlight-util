@@ -25,9 +25,9 @@ import java.io.PrintStream
 import scala.Option.option2Iterable
 
 import com.hp.hpl.jena.rdf.model.Model
-import com.typesafe.config.ConfigFactory
 
 import intrinsic.spotlight.utils.util.ExtractData
+import intrinsic.spotlight.utils.util.ExtractLinux
 
 
 /**
@@ -55,37 +55,13 @@ object RDFContextExtractor extends App {
   /** Get file extension */
   def extensor(file: String) = file.split('.').drop(1).lastOption
   
-  /** Extracting from Config File */
-  def extractFromConfig(): String = {
-    
-    /* Get properties from application.conf */
-    val config = ConfigFactory.load
-    
-    /** Use it to load a database from filesystem*/
-    val loadTDB: Boolean = config.getBoolean("dataSet.reload")
-    val tdbFile: String = config.getString("dataSet.inputFile")
-    val tdbLocation: String = config.getString("dataSet.location")
-    val tdbFormat: String = config.getString("dataSet.format")
-    
-    val extraction: String = config.getString("execution.extraction")
-    val outputFormat: String = config.getString("execution.outputFormat")
-    val outputFile: String = config.getString("execution.outputFile")
-    
-    /** Supports only *.bz2 files for now*/
-    val modelFile: String = config.getString("execution.inputFile")
-    val modelFormat: String = config.getString("execution.inputFormat")
-    
-    extract(loadTDB, 
-    		tdbFile, 
-    		tdbLocation,
-    		tdbFormat,
-    		modelFile, 
-    		modelFormat,
-    		extraction, 
-    		outputFormat,
-    		outputFile, outputFile)
-    		
-    outputFile
+  def loadDataSet(tdbFile: String, tdbLocation: String, tdbFormat: String) {
+    /** Convert TDB input file into InputStream*/
+    val tdbModel: InputStream = if (extensor(tdbFile).equals(Some("bz2"))) ExtractData.convert(tdbFile) 
+    		  					  else ExtractData.toInputStream(tdbFile)
+    /** Creates and populates TDB */
+    DataConn.createTDBFilesystem(tdbLocation, tdbModel, tdbFormat)
+
   }
   
   /** Extracting */
@@ -100,14 +76,8 @@ object RDFContextExtractor extends App {
 		  	    outputFile: String, 
 		  	    namedModel: String) {
     
-    if (loadtdb) {
-      
-      /** Convert TDB input file into InputStream*/
-      val tdbModel: InputStream = if (extensor(tdbFile).equals(Some("bz2"))) ExtractData.convert(tdbFile) 
-    		  					    else ExtractData.toInputStream(tdbFile)
-      /** Creates and populates TDB */
-      DataConn.createTDBFilesystem(tdbLocation, tdbModel, tdbFormat)
-    }
+    if (loadtdb)
+      loadDataSet(tdbFile, tdbLocation, tdbFormat)
    
     /** converts Model input file into InputStream**/
     var input: InputStream = if (extensor(modelFile).equals(Some("bz2"))) ExtractData.convert(modelFile) 
@@ -123,10 +93,49 @@ object RDFContextExtractor extends App {
     RDFContextExtractor.labelExtraction(
       extraction,
       outformat,
-      namedModel,
+      DataConn.dataSet.getNamedModel(namedModel),
       outputFile)
      
-     
+  }
+  
+  /** Extracting by Using tdbloader2 - for Linux only */
+  def extract2(loadtdb: Boolean, 
+		  	    tdbFile: String, 
+		  	    tdbLocation: String, 
+		  	    tdbFormat: String,
+		  	    modelFile:String, 
+		  	    modelFormat:String, 
+		  	    extraction: String, 
+		  	    outformat: String, 
+		  	    outputFile: String, 
+		  	    namedModelLocation: String,
+		  	    datasetsLocation: String) {
+    
+    
+    if (loadtdb) {
+      println("Loading Main TDB");
+      loadDataSet(tdbFile, tdbLocation, tdbFormat)
+    }
+    
+    /** Get TDB */
+    DataConn.getTDBFilesystem(tdbLocation)
+    
+    println("Loading  " + modelFile + "TDBloader2");
+    
+    /*** Load TDB by using tdbloader2 - only for Linux**/
+    ExtractLinux.tdbloader2(modelFile, datasetsLocation, namedModelLocation)
+
+    println("Getting Model " + namedModelLocation);
+    /** Add Model into TDBs **/
+    val model: Model = DataConn.getTDBFilesystemDataset(namedModelLocation).getDefaultModel()
+    
+    println("Extracting");
+    /**Execute the extraction itself */
+    RDFContextExtractor.labelExtraction(
+      extraction,
+      outformat,
+      model,
+      outputFile)
   }
   
   /**
@@ -134,7 +143,7 @@ object RDFContextExtractor extends App {
    * Performs context extraction, formatting and outputs context into a file.
    * Context extraction can focus on property labels, object labels or object type labels.
    */
-  def labelExtraction(partToBeExtracted: String, format: String, namedModel: String, outputFile: String) {
+  def labelExtraction(partToBeExtracted: String, format: String, namedModel: Model, outputFile: String) {
     
     /** creating the output*/
     val output = new PrintStream(outputFile)
@@ -146,9 +155,7 @@ object RDFContextExtractor extends App {
     val extractor = if (partToBeExtracted.equals("object")) new ObjectExtractor else new PropertyExtractor
     
     /** applying over input*/
-    val model: Model = DataConn.dataSet.getNamedModel(namedModel)
-
-    var source: JenaStatementSource =  new JenaStatementSource( model)
+    var source: JenaStatementSource =  new JenaStatementSource( namedModel)
     
     source.groupBy(e => e.getSubject).flatMap {
       case (subject, statements) => {
