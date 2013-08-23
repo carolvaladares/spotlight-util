@@ -49,6 +49,7 @@ class JenaStatementSource(model: Model) extends Traversable[Statement] {
 	      }
 	    }
      } catch  {
+       /** It catches some cases in which the dataset may break**/
 		case e: UnsupportedOperationException => {
         println("Error 01: UnsupportedOperationException " );
         println(extract.getClass());

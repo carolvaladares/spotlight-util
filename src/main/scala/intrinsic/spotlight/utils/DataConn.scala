@@ -46,8 +46,9 @@ import com.hp.hpl.jena.tdb.TDBFactory
  */
 object DataConn {
 
-  /* TDB, in which the DefaultModel holds Labels model and 
-   * NamedModel holds either properties or types models*/
+  /** TDB, in which the DefaultModel holds Labels model and 
+   * NamedModel holds either properties or types models
+   */
   var dataSet: Dataset = null
   
   /**
@@ -61,7 +62,9 @@ object DataConn {
     modelInput: InputStream, 
     modelFormat: String) = {
     
+    /** Creates dataSet*/
     createTDBFilesystem(labelData, labelInput, labelFormat)
+    /** Adds a named Model into dataSet*/
     addModelToTDB(modelName, modelInput, modelFormat)
   }
   
@@ -69,9 +72,9 @@ object DataConn {
    * Creates a Jena Dataset, and adds a Labels Model from InputStream file 
    */
   def createTDBFilesystem(outputData: String, is: InputStream, format: String) = {
-    /* Creates tdb */
+    /** Creates tdb */
     dataSet = TDBFactory.createDataset(outputData)
-    /* Creates default Model and populate it for labels dataset */
+    /** Creates default Model and populate it for labels dataset */
     val tdb: Model = readModel(is, format) //dataSet.getDefaultModel
     tdb.close
   }
@@ -81,16 +84,21 @@ object DataConn {
    * It might be a properties or a type dataset.
    */
   def addModelToTDB(modelName: String, is: InputStream, format: String) = {
-    /* Creates a Model for Properties or Types dataset and populate it */
+    /** Creates a Model for Properties or Types dataset and populate it */
     val model2: Model = readModel(is, format)//ModelFactory.createDefaultModel//TDBFactory.createModel()
-    /* Adding model into dataset*/
+    /** Adding model into dataset*/
     dataSet.addNamedModel(modelName, model2) 
   }
   
-  
+  /****
+   * Reads InputStrem into Model by using RDFReader.
+   * Better for medium files as it only uses available memory RAM.
+   */
   def readModel (is: InputStream, format: String) : Model = {
+    /** Creates a model*/
     val model: Model = ModelFactory.createDefaultModel
-    var reader: RDFReader = model.getReader( format)
+    /** Reads the input file into model **/
+    var reader: RDFReader = model.getReader(format)
     reader.setProperty("allowBadURIs", "true");
 	reader.setProperty("relativeURIs", "");
 	reader.setProperty("tab", "0");
@@ -99,22 +107,25 @@ object DataConn {
 	   reader.read(model, is, null)
 	} catch {
 	  case (e: RiotException) => {
+	    /** Catches some cases in which the dataset has bad URIs**/
 	    println("Error 05: java.io.IOException: unexpected end of stream");
 	    println(e.getStackTrace());
 	  }
 	}
+	
+	/** Return the model just loaded */
     model
   }
   
   /**
-   * Reads InputStrem into Model
+   * Traditional reading of InputStrem to Model.
+   * For smal datasets.
    */
    def readIntoModel(model: Model, is: InputStream, format: String): Model = {
-    /* Reading inputStrem file with a specific format */
+    /** Reading inputStrem file with a specific format */
     if (is != null) {
       model.read(is, null, format)
       is.close
-      //model.close
     } else {
       throw new IOException("Cannot open input file %s") //.format(input))
     }
@@ -141,6 +152,9 @@ object DataConn {
     dataSet = TDBFactory.createDataset(outputData)
   }
  
+  /***
+   * Grab a temporary tdb file  - used for tdbloader2 method on ExtractData.
+   */
   def getTDBFilesystemDataset(outputData: String) : Dataset = {
     TDBFactory.createDataset(outputData)
   }

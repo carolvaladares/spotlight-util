@@ -12,14 +12,14 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 *
-* Check our project website for information on how to acknowledge the
-* authors and how to contribute to the project:
+* Check our project website for informationxect:
 * http://spotlight.dbpedia.org
 */
 
 package Intrinsic.spotlight.utils
 
 import java.io.InputStream
+import java.util.Calendar
 
 import scala.io.Source
 
@@ -30,7 +30,8 @@ import org.scalatest.Assertions
 
 import intrinsic.spotlight.utils.DataConn
 import intrinsic.spotlight.utils.RDFContextExtractor
-import intrinsic.spotlight.utils.util.ExtractData
+import intrinsic.spotlight.utils.util.LinuxTDBLoader
+import intrinsic.spotlight.utils.util.BZipUntar
 
 /**
  * Tests the functions of the project.
@@ -40,17 +41,10 @@ import intrinsic.spotlight.utils.util.ExtractData
 class ExecutionTests extends Assertions {
 
   /** TDB Input file*/
-  val labelsNT: String = //"http://dl.dropboxusercontent.com/u/10940054/pt/3.8_sl_en_sl_labels_en.nt.bz2"  //Smaller dataset in EN
-		  				 "http://downloads.dbpedia.org/3.8/pt/labels_pt.nt.bz2"						//Bigger dataset in Pt
-    
-  val typesNT: String = //"http://dl.dropboxusercontent.com/u/10940054/pt/3.8_sl_en_sl_instance_types_en.nt.bz2"  //Smaller dataset in EN
-    					"http://downloads.dbpedia.org/3.8/pt/instance_types_pt.nt.bz2"						//Bigger dataset in Pt
-    
-  val propertiesNT: String = ///"http://dl.dropboxusercontent.com/u/10940054/pt/3.8_sl_en_sl_mappingbased_properties_en.nt.bz2" //Smaller dataset in EN
-    	 					 "http://downloads.dbpedia.org/3.8/pt/mappingbased_properties_pt.nt.bz2" 			 //Bigger dataset in Pt
-  
-  val linksNT: String = //"http://downloads.dbpedia.org/3.8/en/page_links_en.nt.bz2"
-    "http://downloads.dbpedia.org/3.8/pt/page_links_en_uris_pt.nt.bz2"
+  val labelsNT: String = "http://downloads.dbpedia.org/3.8/pt/labels_pt.nt.bz2"						 
+  val typesNT: String = "http://downloads.dbpedia.org/3.8/pt/instance_types_pt.nt.bz2"			
+  val propertiesNT: String = "http://downloads.dbpedia.org/3.8/pt/mappingbased_properties_pt.nt.bz2"
+  val linksNT: String =  "http://downloads.dbpedia.org/3.8/pt/page_links_en_uris_pt.nt.bz2"
     
   /** TDB Input file*/
   val labelsOWL: String = "http://dl.dropboxusercontent.com/u/10940054/pt/dbpedia_3.8.owl.bz2"
@@ -71,22 +65,22 @@ class ExecutionTests extends Assertions {
       
   def TDBCreation {
     /** Test the conversion of input file (*.bz2) into InputStrem **/
-    val labelsInputNT: InputStream = ExtractData.convert(labelsNT)
-    //val labelsInputOWL: InputStream = ExtractData.convert(labelsOWL)
+    val labelsInputNT: InputStream = BZipUntar.convert(labelsNT)
+    val labelsInputOWL: InputStream = BZipUntar.convert(labelsOWL)
     
     assert(labelsInputNT != null)
-   // assert(labelsInputOWL != null)
+    //assert(labelsInputOWL != null)
    
     /** Test NT and OWL databases creation **/
     DataConn.createTDBFilesystem(datasetNL, labelsInputNT, formatNamed)
-   // DataConn.createTDBFilesystem(datasetOWL, labelsInputOWL, formatDefault)
+    DataConn.createTDBFilesystem(datasetOWL, labelsInputOWL, formatDefault)
     
     /** Retrieves the database just created. **/
     DataConn.getTDBFilesystem(datasetNL)
-    //assert("AlbaniaHistory".equals(DataConn.executeQuery("http://dbpedia.org/resource/AlbaniaHistory")))
+    assert("AlbaniaHistory".equals(DataConn.executeQuery("http://dbpedia.org/resource/AlbaniaHistory")))
     
-   // DataConn.getTDBFilesystem(datasetOWL)
-   // assert("anatomical structure".equals(DataConn.executeQuery("http://dbpedia.org/ontology/AnatomicalStructure")))
+    DataConn.getTDBFilesystem(datasetOWL)
+    assert("anatomical structure".equals(DataConn.executeQuery("http://dbpedia.org/ontology/AnatomicalStructure")))
   }
   
   @Before
@@ -104,71 +98,129 @@ class ExecutionTests extends Assertions {
     //extractPropertiesFromMapBasPropertiesAndOwlDatabase
   }
  
+  /***
+   * Extraction Strings formating
+   *
+   * example of usage:
+   * 
+   * input:
+   * http://downloads.dbpedia.org/3.8/pt/page_links_pt.nt.bz2
+   * 
+   * output:
+   * ["files/outputs/page_links.pt.nt.obj.tsv",   "http://downloads.dbpedia.org/3.8/pt/page_links_pt.nt.bz2",   "page_links_pt_nt"]
+   */
+  def getFiles(httpFile: String, input: String) : Array[String] = {
+    
+    /** file full name. ex: page_links_pt.nt.bz2 */
+    val last: String = httpFile.split("/").last 
+    /** file name with language. ex: page_links_pt*/
+    var nameLang: String = last.replace("." + input + ".bz2", "")
+    /** Language */
+    var lang: String = nameLang.split("_").last
+    /** file name. ex: page_links*/
+    var name: String = nameLang.replace("_"+ lang, "")
+    
+    Array("files/outputs/" +  name + "." + lang + "." + input + ".obj.tsv" ,
+        httpFile, 
+        name + "_"+ lang + "_" + input)
+  }
+  
+  /***
+   * Extract all  datasets from dbpedia pt 3.8
+   */
   def extract {
 
     /** Loads the labels dataset if it is the first iteration**/
-    var boo:Boolean = true
+    var first:Boolean = false
     
     /** (0) output , (1) input file , (2) name**/
-    val files: Array[Array[String]] = Array(
-      Array("files/outputs/page_links.pt.nt.obj.tsv", 
-        "http://downloads.dbpedia.org/3.8/pt/page_links_pt.nt.bz2", 
-        "page_links_pt_nt"),
-      Array("files/outputs/page_links_unredirected.pt.nt.obj.tsv", 
-        "http://downloads.dbpedia.org/3.8/pt/page_links_unredirected_pt.nt.bz2", 
-        "page_links_unredirected_pt_nt"),
-        
-      Array("files/outputs/long_abstracts.pt.nt.obj.tsv", 
-        "http://downloads.dbpedia.org/3.8/pt/long_abstracts_pt.nt.bz2", 
-        "long_abstracts_pt_nt"),
-     Array("files/outputs/interlanguage_links.pt.nt.obj.tsv", 
-        "http://downloads.dbpedia.org/3.8/pt/interlanguage_links_pt.nt.bz2", 
-        "interlanguage_links_pt_nt"),
-        
-      Array("files/outputs/instance_types.pt.nt.obj.tsv", 
-        "http://downloads.dbpedia.org/3.8/pt/instance_types_pt.nt.bz2", 
-        "instance_types_pt_nt") ,   
-      Array("files/outputs/mappingbased_properties.pt.nt.obj.tsv", 
-        "http://downloads.dbpedia.org/3.8/pt/mappingbased_properties_pt.nt.bz2", 
-        "mappingbased_properties_pt_nt")
+    val files: Array[String] = Array(
+      "http://downloads.dbpedia.org/3.8/pt/instance_types_pt.nt.bz2"
+      /*"https://dl.dropboxusercontent.com/u/10940054/mappingbased.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/page_links_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/page_links_unredirected_pt.nt.bz2",      
+      "http://downloads.dbpedia.org/3.8/pt/long_abstracts_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/interlanguage_links_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/instance_types_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/mappingbased_properties_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/page_links_en_uris_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/interlanguage_links_same_as_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/long_abstracts_en_uris_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/infobox_properties_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/infobox_properties_unredirected_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/page_links_unredirected_en_uris_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/short_abstracts_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/infobox_properties_en_uris_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/infobox_properties_unredirected_en_uris_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/short_abstracts_en_uris_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/interlanguage_links_same_as_chapters_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/mappingbased_properties_unredirected_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/wikipedia_links_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/infobox_test_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/revision_uris_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/mappingbased_properties_en_uris_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/mappingbased_properties_unredirected_en_uris_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/revision_ids_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/page_ids_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/article_categories_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/images_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/images_en_uris_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/external_links_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/redirects_transitive_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/redirects_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/external_links_en_uris_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/article_categories_en_uris_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/iri_same_as_uri_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/labels_en_uris_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/instance_types_en_uris_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/skos_categories_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/interlanguage_links_see_also_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/skos_categories_en_uris_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/category_labels_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/interlanguage_links_see_also_chapters_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/disambiguations_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/disambiguations_unredirected_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/specific_mappingbased_properties_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/specific_mappingbased_properties_en_uris_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/category_labels_en_uris_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/disambiguations_en_uris_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/disambiguations_unredirected_en_uris_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/homepages_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/homepages_en_uris_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/infobox_property_definitions_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/infobox_property_definitions_en_uris_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/geo_coordinates_pt.nt.bz2",
+      "http://downloads.dbpedia.org/3.8/pt/geo_coordinates_en_uris_pt.nt.bz2"
+      */
     )
 
-    for(file: Array[String] <- files){
-      RDFContextExtractor.extract2(
-      boo, 
-      labelsNT, 
-      datasetNL, 
-      formatNamed, 
-      file(1), 
-      formatNamed, 
-      extractionObject, 
-      outputFormatTSV, 
-      file(0), 
-      //"/Users/carol/Documents/Intrinsic/Repositories/spotlight-util/files/outputs/tdbs/" + file(2),
-      "/root/carol/spotlight-util/files/outputs/tdbs/" + file(2),
-	  //"/Users/carol/Documents/Intrinsic/Dataset"
-      "/root/carol/datasets/"
-	  )
-	  boo = false
+    var input: Array[String] = null
+    for( i: String <- files){
+      input = getFiles(i, "nt")
+      //extract: reload,  modelFile, outputFile,  namedModel
+      //input:   (0) outputFile , (1) input model file , (2) nameModel
+      RDFContextExtractor.extractPropertiesJSON(first, input(1), input(0),  input(2))
+   	  first = false 
     }
    
+   asserts(input(0), "")
   }
   
   def extractObjectsFromPageLinksAndNTDatabase {
 
-    val outputFile: String = "files/outputs/objectsFromPageLinksAndNtDatabase.tsv"
+    val outputFile: String = "files/outputs/__objectsFromPageLinksAndNtDatabase.tsv"
    
     RDFContextExtractor.extract(
       false, 
       labelsNT, 
       datasetNL, 
       formatNamed, 
-      linksNT, 
+      typesNT, 
       formatNamed, 
-      extractionObject, 
-      outputFormatTSV, 
+      extractionProperty, 
+      outputFormatJSON, 
       outputFile, 
-      "linksNT")
+      "linksnt")
   }
   
   def asserts(outputFile: String, assertPattern: String) {
@@ -195,9 +247,7 @@ class ExecutionTests extends Assertions {
       outputFile,
      "propertiesNT")
       
-    //  asserts(outputFile, "")
-      
-
+    //asserts(outputFile, "")
     
     /*"""Aristotle	Metaphysics Theatre Biology  Galileo_Galilei List of writers influenced by Aristotle Alexander_the_Great Albertus_Magnus Christian_philosophy Socrates , Aristot√©lƒìs Science Music Ethics Parmenides Politics Democritus Zoology -0384 Duns_Scotus Rhetoric Peripatetic_school Western_philosophy Thomas_Aquinas Physics Government Avicenna Reason Logic Nicolaus_Copernicus Western_philosophy Aristotelianism Syllogism Heraclitus Ptolemy -0322 Poetry Jewish_philosophy Maimonides Plato Ancient_philosophy Islamic_philosophy Averroes
 		Animal_Farm	Animal Farm: A Fairy Story George_Orwell 53163540 112 Nineteen_Eighty-Four ISBN 0-452-28424-4 (present) ISBN 978-0-452-28424-1 Harvill_Secker 823/.912 20 _Socialism_and_the_English_Genius PR6029.R8 A63 2003b Animal Farm
@@ -210,21 +260,22 @@ class ExecutionTests extends Assertions {
 
   def extractObjectsFromTypesAndNtDatabase {
 
-    val outputFile: String = "files/outputs/objectsFromTypesAndNtDatabase.tsv"
+    val outputFile: String = "files/outputs/test/proFromMappingAndNtDatabase.tsv"
    
-    RDFContextExtractor.extract(
+    RDFContextExtractor.extract2(
       false, 
       labelsNT, 
       datasetNL, 
       formatNamed, 
-      typesNT, 
+      "/Users/carol/Documents/Intrinsic/Dataset/mappingbased_properties_pt.nt", 
       formatNamed, 
-      extractionObject, 
+      extractionProperty, 
       outputFormatTSV, 
       outputFile,
-      "typesNT")
+      "/Users/carol/Documents/Intrinsic/Repositories/spotlight-util/files/outputs/test/objMappNt" ,
+	  "/Users/carol/Documents/Intrinsic/Dataset")
       
-     asserts(outputFile, "")
+    // asserts(outputFile, "")
     
     /*"""Allan_Dwan	Agent Person Thing Person Person
 		Allan_Dwan__2	Thing PersonFunction
@@ -242,7 +293,6 @@ class ExecutionTests extends Assertions {
 		Ayn_Rand	Artist Writer
 		Allan_Dwan__3	Thing PersonFunction
 		"""*/
- 
   }
 
   def extractObjectsFromTypesAndOwlDatabase {
@@ -284,27 +334,44 @@ class ExecutionTests extends Assertions {
 
   def extractPropertiesFromMapBasPropertiesAndOwlDatabase {
 
-    val outputFile: String = "files/outputs/propertiesFromMapBasPropertiesAndOwlDatabase.tsv"
-
-    RDFContextExtractor.extract(
+    val outputFile: String = "files/outputs/2.tsv"
+       //"property", "JSON", "files/inputs/3.8_sl_en_sl_mappingbased_properties_en.nt",
+     // "files/outputs/_propertiesFromMapBasPropertiesAndOwlDatabase.tsv"
+   /* RDFContextExtractor.extract(
       false, 
-      labelsOWL, 
-      datasetOWL, 
+      labelsNT, 
+      datasetNL, 
       formatDefault, 
-      propertiesNT, 
+      "files/inputs/3.8_sl_en_sl_mappingbased_properties_en.nt", 
       formatNamed, 
-      extractionProperty, 
+      "property", 
       outputFormatJSON, 
       outputFile,
-      "propertiesNT_owl")
+      "propertiesNT99")
       
-     asserts(outputFile, "")
+      */
+      
+      
+     RDFContextExtractor.extract2(
+      true, 
+      labelsNT, 
+      datasetNL, 
+      formatNamed, 
+      "files/inputs/3.8_sl_en_sl_mappingbased_properties_en.nt", 
+      formatNamed, 
+      "property", 
+      outputFormatJSON, 
+      outputFile,
+      "/Users/carol/Documents/Intrinsic/Repositories/spotlight-util/files/outputs/test/test" ,
+	  "/Users/carol/Documents/Intrinsic/Dataset")
+	  
+     //asserts(outputFile, "")
     
     /* assertEquals("""Aristotle	{(death,1),(œÄŒµœÅŒπŒøœáŒÆ,1),(birth,1),(nam,1),(interest,11),(by,5),(year,2),(notableide,4),(main,11),(era,1),(influenced,21),(philosophicalschool,2)}
-Animal_Farm	{(nam,2),(decimal,1),(author,1),(dewey,1),(previous,1),(classification,1),(work,2),(of,1),(subsequent,1),(numb,1),(pag,1),(isbn,1),(oclc,1),(herausgeb,1),(lcc,1)}
-Autism	{(nam,1),(medlineplus,1),(subject,1),(icd9,1),(mesh,1),(omim,1),(id,2),(emedicin,2),(diseasesdb,1),(topic,1)}
-Alabama	{(nam,1),(hauptstadt,1),(demonym,1),(œáœéœÅŒ±,1),(sprach,1)}
-""", lines)*/
+		Animal_Farm	{(nam,2),(decimal,1),(author,1),(dewey,1),(previous,1),(classification,1),(work,2),(of,1),(subsequent,1),(numb,1),(pag,1),(isbn,1),(oclc,1),(herausgeb,1),(lcc,1)}
+		Autism	{(nam,1),(medlineplus,1),(subject,1),(icd9,1),(mesh,1),(omim,1),(id,2),(emedicin,2),(diseasesdb,1),(topic,1)}
+		Alabama	{(nam,1),(hauptstadt,1),(demonym,1),(œáœéœÅŒ±,1),(sprach,1)}
+		""", lines)*/
   }
 
   @After
